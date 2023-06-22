@@ -3,6 +3,8 @@ use std::{io::{self, Stdout}, time::Duration};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, poll, Event, MouseEventKind, read, MouseButton, DisableMouseCapture}};
 use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::Alignment};
 
+use crate::{base::{Game, Step, Board, Player, self}, ai::{self, AI}};
+
 use super::{util, Display};
 
 pub enum TuiEvent {
@@ -20,8 +22,8 @@ pub fn tui_init() -> Result<Terminal<CrosstermBackend<Stdout>>, io::Error> {
     Ok(Terminal::new(backend)?)
 }
 
-pub fn tui_draw<B: Display>(terminal: &mut Terminal<CrosstermBackend<Stdout>>, board: B) {
-    terminal.draw(|f| {
+pub fn tui_draw<B: Display>(terminal: &mut Terminal<CrosstermBackend<Stdout>>, board: &B) {
+    let _ = terminal.draw(|f| {
         let size = f.size();
         {
             let p = Paragraph::new(util::generate_board(board))
@@ -61,4 +63,38 @@ pub fn tui_exit(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(),
     )?;
     terminal.show_cursor()?;
     Ok(())
+}
+
+impl<B: Board<S>, S: Step> Game<B, S> {
+    pub fn tui_main(&mut self) where B: Display + AI<S> {
+        let mut tem = tui_init().unwrap();
+        loop {
+            // if let base::GameState::Over(_o) = game.state {
+                // match o {
+                //     base::OutCome::Draw
+                // }
+            // }
+            tui_draw(&mut tem, &self.board);
+
+            let event = tui_get_event();
+            if let TuiEvent::Exit = event {
+                break;
+            }
+
+            if let TuiEvent::GetPos((x, y)) = event {
+                let step = S::new(x as u8, y as u8);
+                if self.state == base::GameState::Running {
+                    if self.curr_player == Player::Hum {
+                        let _ = self.step(step);
+                    }
+                }
+            }
+
+            if self.curr_player == Player::Com {
+                let _ = self.step(ai::get_best_step(&self.board, self.curr_player).unwrap());
+            }
+        }
+
+        let _ = tui_exit(&mut tem);
+    }
 }

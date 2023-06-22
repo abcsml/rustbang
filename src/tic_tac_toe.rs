@@ -1,5 +1,5 @@
 use std::fmt::Error;
-use crate::{base::{Player, Board, OutCome, GameState}, ai::AI};
+use crate::{base::{Player, Board, OutCome, GameState, Step}, ai::AI};
 use crate::display::Display;
 
 const SIZE: u8 = 3;
@@ -28,8 +28,8 @@ pub struct TTTStep {
     piece: TTTPiece
 }
 
-impl TTTStep {
-    pub fn new(x: u8, y: u8) -> Self {
+impl Step for TTTStep {
+    fn new(x: u8, y: u8) -> Self {
         TTTStep { piece: TTTPiece { belong: Player::Hum, pos: TTTPos(x, y) } }
     }
 }
@@ -68,24 +68,18 @@ impl TTTBoard {
     //     v
     // }
 
-    pub fn hand_put(&mut self, player: Player, x: u8, y: u8) {
-        self.put(TTTStep { piece: TTTPiece { belong: player, pos: TTTPos(x, y) } }).unwrap()
+    pub fn hand_put(&mut self, player: Player, x: u8, y: u8) -> bool {
+        self.put(TTTStep { piece: TTTPiece { belong: player, pos: TTTPos(x, y) } })
     }
 }
 
 impl Board<TTTStep> for TTTBoard {
-    fn put(&mut self, step: TTTStep) -> Result<(), Error> {
+    fn put(&mut self, step: TTTStep) -> bool {
         if self.can_put(&step) {
             self.pieces.push(step.piece);
-            return Ok(());
+            return true;
         }
-        Err(Error)
-    }
-
-    fn copy_put(&self, step: TTTStep) -> Result<Self, Error> where Self: Sized {
-        let mut n = self.clone();
-        n.put(step)?;
-        Ok(n)
+        false
     }
 
     fn over(&self) -> GameState {
