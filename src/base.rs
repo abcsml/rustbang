@@ -60,9 +60,11 @@ impl<B: Board<S>,S: Step> Game<B,S> {
             return false;
         }
         let result = self.board.put(step);
-        self.state = self.board.over();
-        self.curr_player = self.next_player();
-        self.hist_steps.push(step);
+        if result {
+            self.state = self.board.over();
+            self.curr_player = self.next_player();
+            self.hist_steps.push(step);
+        }
         result
     }
 }
