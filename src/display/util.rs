@@ -32,7 +32,7 @@ pub fn generate_empty_board(size: u8) -> Vec<Spans<'static>> {
     text
 }
 
-pub fn generate_board<A: Display>(a: &A) -> Vec<Spans<'static>> {
+pub fn generate_map<M: Display>(a: &M) -> Vec<Spans<'static>> {
     let size = a.size();
     let arr = a.to_array();
     // let data = Span::raw("x");

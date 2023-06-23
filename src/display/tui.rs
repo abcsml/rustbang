@@ -1,7 +1,7 @@
 use std::{io::{self, Stdout}, time::Duration};
 
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, poll, Event, MouseEventKind, read, MouseButton, DisableMouseCapture}};
-use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::Alignment};
+use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::{Alignment, Layout, Direction, Constraint}};
 
 use crate::{base::{Game, Step, Board, Player, self, Role}, ai::{self, AI}};
 
@@ -22,17 +22,30 @@ pub fn tui_init() -> Result<Terminal<CrosstermBackend<Stdout>>, io::Error> {
     Ok(Terminal::new(backend)?)
 }
 
-pub fn tui_draw<B: Display>(terminal: &mut Terminal<CrosstermBackend<Stdout>>, board: &B) {
+pub fn tui_draw<M: Display>(terminal: &mut Terminal<CrosstermBackend<Stdout>>, maps: Vec<&M>) {
     let _ = terminal.draw(|f| {
-        let size = f.size();
-        {
-            let p = Paragraph::new(util::generate_board(board))
-                .block(Block::default().borders(Borders::ALL))
-                .style(Style::default().fg(Color::White).bg(Color::Black))
-                .alignment(Alignment::Left)
-                .wrap(Wrap { trim: false });
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .margin(0)
+            .constraints(
+                [
+                    Constraint::Percentage(60),
+                    Constraint::Percentage(40)
+                ].as_ref()
+            )
+            .split(f.size());
 
-            f.render_widget(p, size);
+        {
+            for i in 0..maps.len() {
+                let p = Paragraph::new(util::generate_map(maps[i]))
+                    .block(Block::default().borders(Borders::ALL))
+                    .style(Style::default().fg(Color::White).bg(Color::Black))
+                    .alignment(Alignment::Left)
+                    .wrap(Wrap { trim: false });
+
+                f.render_widget(p, chunks[i]);
+            }
+
         }
     });
 }
@@ -74,7 +87,7 @@ impl<B: Board<S>, S: Step> Game<B, S> {
                 //     base::OutCome::Draw
                 // }
             // }
-            tui_draw(&mut tem, &self.board);
+            tui_draw(&mut tem, vec![&self.board, &self.board]);
 
             match self.players[self.curr_player.0 as usize] {
                 Role::Com => {

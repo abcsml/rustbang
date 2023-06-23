@@ -6,7 +6,6 @@ mod gobang;
 mod tic_tac_toe;
 
 use crate::base::{Game, Player, Board, Step, Role};
-use crate::display::{Display, tui};
 use crate::tic_tac_toe::{TTTBoard, TTTStep};
 
 fn main() {
@@ -18,6 +17,7 @@ fn main() {
     );
 
     game.tui_main();
+    // game.step(ai::get_next_best_step(&game.board, game.curr_player).unwrap());
 
-    println!("hello");
+    // println!("hello");
 }
