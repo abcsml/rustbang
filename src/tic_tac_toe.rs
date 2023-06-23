@@ -29,8 +29,12 @@ pub struct TTTStep {
 }
 
 impl Step for TTTStep {
-    fn new(x: u8, y: u8) -> Self {
-        TTTStep { piece: TTTPiece { belong: Player::Hum, pos: TTTPos(x, y) } }
+    fn new(x: u8, y: u8, p: Player) -> Self {
+        TTTStep { piece: TTTPiece { belong: p, pos: TTTPos(x, y) } }
+    }
+
+    fn who(&self) -> Player {
+        self.piece.belong
     }
 }
 
@@ -40,10 +44,6 @@ pub struct TTTBoard {
 }
 
 impl TTTBoard {
-    pub fn new() -> Self {
-        TTTBoard { pieces: vec![] }
-    }
-
     pub fn can_put(&self, step: &TTTStep) -> bool {
         if step.piece.pos.valid() {
             for p in &self.pieces {
@@ -74,6 +74,10 @@ impl TTTBoard {
 }
 
 impl Board<TTTStep> for TTTBoard {
+    fn new() -> Self {
+        TTTBoard { pieces: vec![] }
+    }
+
     fn put(&mut self, step: TTTStep) -> bool {
         if self.can_put(&step) {
             self.pieces.push(step.piece);
@@ -83,7 +87,7 @@ impl Board<TTTStep> for TTTBoard {
     }
 
     fn over(&self) -> GameState {
-        for pla in [Player::Com, Player::Hum] {
+        for pla in [Player(0), Player(1)] {
             let mut mat = [[false; SIZE as usize]; SIZE as usize];
             let mut flag = false;
             for pie in &self.pieces {
@@ -138,12 +142,13 @@ impl Board<TTTStep> for TTTBoard {
 }
 
 impl AI<TTTStep> for TTTBoard {
-    fn score(&self) -> i16 {
+    fn score(&self, player: Player) -> i16 {
         match self.over() {
             GameState::Running => 0,
             GameState::Over(OutCome::Draw) => 0,
-            GameState::Over(OutCome::Winer(Player::Com)) => 32,
-            GameState::Over(OutCome::Winer(Player::Hum)) => -32,
+            GameState::Over(OutCome::Winer(p)) => {
+                if p == player {32} else {-32}
+            },
         }
     }
 }
@@ -153,9 +158,10 @@ impl Display for TTTBoard {
         let mut arr = vec![vec![' '; 3]; 3];
         for p in &self.pieces {
             arr[p.pos.0 as usize][p.pos.1 as usize] =
-            match p.belong {
-                Player::Com => 'o',
-                Player::Hum => 'x',
+            match p.belong.0 {
+                0 => 'o',
+                1 => 'x',
+                _ => '?',
             }
         }
         arr

@@ -3,7 +3,7 @@ use std::{io::{self, Stdout}, time::Duration};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, poll, Event, MouseEventKind, read, MouseButton, DisableMouseCapture}};
 use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::Alignment};
 
-use crate::{base::{Game, Step, Board, Player, self}, ai::{self, AI}};
+use crate::{base::{Game, Step, Board, Player, self, Role}, ai::{self, AI}};
 
 use super::{util, Display};
 
@@ -76,22 +76,23 @@ impl<B: Board<S>, S: Step> Game<B, S> {
             // }
             tui_draw(&mut tem, &self.board);
 
-            let event = tui_get_event();
-            if let TuiEvent::Exit = event {
-                break;
-            }
+            match self.players[self.curr_player.0 as usize] {
+                Role::Com => {
+                    let _ = self.step(ai::get_next_best_step(&self.board, self.curr_player).unwrap());
+                }
+                Role::Hum => {
+                    let event = tui_get_event();
+                    if let TuiEvent::Exit = event {
+                        break;
+                    }
 
-            if let TuiEvent::GetPos((x, y)) = event {
-                let step = S::new(x as u8, y as u8);
-                if self.state == base::GameState::Running {
-                    if self.curr_player == Player::Hum {
-                        let _ = self.step(step);
+                    if let TuiEvent::GetPos((x, y)) = event {
+                        let step = S::new(x as u8, y as u8, self.curr_player);
+                        if self.state == base::GameState::Running {
+                            let _ = self.step(step);
+                        }
                     }
                 }
-            }
-
-            if self.curr_player == Player::Com {
-                let _ = self.step(ai::get_best_step(&self.board, self.curr_player).unwrap());
             }
         }
 
