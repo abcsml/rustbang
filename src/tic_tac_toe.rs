@@ -124,8 +124,20 @@ impl Board<TTTStep> for TTTBoard {
         }
         GameState::Running
     }
+}
 
-    fn get_possible_steps(&self, player: Player) -> Vec<TTTStep> {
+impl AI<TTTStep> for TTTBoard {
+    fn score(&self, player: Player) -> i16 {
+        match self.over() {
+            GameState::Running => 0,
+            GameState::Over(OutCome::Draw) => 0,
+            GameState::Over(OutCome::Winer(p)) => {
+                if p == player {32} else {-32}
+            },
+        }
+    }
+
+    fn get_possible_steps(&self, player: Player, deep: u8) -> Vec<TTTStep> {
         let mut v = vec![];
         for i in 0..SIZE {
             for j in 0..SIZE {
@@ -138,18 +150,6 @@ impl Board<TTTStep> for TTTBoard {
             }
         }
         v
-    }
-}
-
-impl AI<TTTStep> for TTTBoard {
-    fn score(&self, player: Player) -> i16 {
-        match self.over() {
-            GameState::Running => 0,
-            GameState::Over(OutCome::Draw) => 0,
-            GameState::Over(OutCome::Winer(p)) => {
-                if p == player {32} else {-32}
-            },
-        }
     }
 }
 
@@ -169,5 +169,9 @@ impl Display for TTTBoard {
 
     fn size(&self) -> (u8, u8) {
         (3, 3)
+    }
+
+    fn to_string(&self) -> String {
+        todo!()
     }
 }
