@@ -1,11 +1,20 @@
-use std::{io::{self, Stdout}, time::Duration};
+use std::{io::{self, Stdout}, time::Duration, collections::VecDeque};
 
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, poll, Event, MouseEventKind, read, MouseButton, DisableMouseCapture}};
-use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::{Alignment, Layout, Direction, Constraint}};
+use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::{Alignment, Layout, Direction, Constraint}, text::{Spans, Span}};
 
 use crate::{base::{Game, Step, Board, Player, self, Role}, ai::{self, AI}};
 
-use super::{util, Display};
+use super::{util, Display, log};
+
+static mut TEXT: VecDeque<Spans> = VecDeque::new();
+
+pub unsafe fn tui_log(spans: Spans<'static>) {
+    if TEXT.len() > 20 {
+        TEXT.pop_front();
+    }
+    TEXT.push_back(spans);
+}
 
 pub enum TuiEvent {
     None,
@@ -36,16 +45,23 @@ pub fn tui_draw<M: Display>(terminal: &mut Terminal<CrosstermBackend<Stdout>>, m
             .split(f.size());
 
         {
-            for i in 0..maps.len() {
-                let p = Paragraph::new(util::generate_map(maps[i]))
-                    .block(Block::default().borders(Borders::ALL))
-                    .style(Style::default().fg(Color::White).bg(Color::Black))
-                    .alignment(Alignment::Left)
-                    .wrap(Wrap { trim: false });
+            let p = Paragraph::new(util::generate_map(maps[0]))
+                .block(Block::default().borders(Borders::ALL))
+                .style(Style::default().fg(Color::White))//.bg(Color::Black))
+                .alignment(Alignment::Left)
+                .wrap(Wrap { trim: false });
 
-                f.render_widget(p, chunks[i]);
-            }
+            f.render_widget(p, chunks[0]);
+        }
 
+        {
+            let p = Paragraph::new(unsafe { TEXT.clone() })
+                .block(Block::default().borders(Borders::ALL))
+                .style(Style::default().fg(Color::White))//.bg(Color::Black))
+                .alignment(Alignment::Left)
+                .wrap(Wrap { trim: false });
+
+            f.render_widget(p, chunks[1]);
         }
     });
 }
@@ -78,7 +94,7 @@ pub fn tui_exit(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(),
     Ok(())
 }
 
-impl<B: Board<S>, S: Step> Game<B, S> {
+impl<B: Board<S>, S: Step + std::fmt::Debug> Game<B, S> {
     pub fn tui_main(&mut self) where B: Display + AI<S> {
         let mut tem = tui_init().unwrap();
         loop {
@@ -87,11 +103,14 @@ impl<B: Board<S>, S: Step> Game<B, S> {
                 //     base::OutCome::Draw
                 // }
             // }
-            tui_draw(&mut tem, vec![&self.board, &self.board]);
+            tui_draw(&mut tem, vec![&self.board]);
 
             match self.players[self.curr_player.0 as usize] {
                 Role::Com => {
-                    let _ = self.step(ai::get_next_best_step(&self.board, self.curr_player).unwrap());
+                    let a = self.step(ai::get_next_best_step(&self.board, self.curr_player).unwrap());
+                    if a {
+                        log(self.board.to_string());
+                    }
                 }
                 Role::Hum => {
                     let event = tui_get_event();
@@ -103,6 +122,7 @@ impl<B: Board<S>, S: Step> Game<B, S> {
                         let step = S::new(x as u8, y as u8, self.curr_player);
                         if self.state == base::GameState::Running {
                             let _ = self.step(step);
+                            log(self.board.to_string());
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-use tui::{text::{Text, Span, Spans}};
+use tui::{text::{Text, Span, Spans}, style::{Style, Modifier}};
 
 use super::Display;
 
@@ -36,15 +36,27 @@ pub fn generate_map<M: Display>(a: &M) -> Vec<Spans<'static>> {
     let size = a.size();
     let arr = a.to_array();
     // let data = Span::raw("x");
-    let vl = Span::raw(" │ ");
-    let hl = Span::raw("─");
-    let cr = Span::raw("┼───");
+    let mut vl = Span::raw(" │ ");
+    let mut hl = Span::raw("─");
+    let mut cr = Span::raw("┼───");
+
+    let line_style = Style::default()
+        .fg(tui::style::Color::LightYellow)
+        // .bg(tui::style::Color::Gray)
+        .add_modifier(Modifier::DIM);
+    vl.style = line_style;
+    hl.style = line_style;
+    cr.style = line_style;
 
     let mut text = vec![];
     for i in 0..size.0 {
         let mut line = vec![Span::raw(" ")];
         for j in 0..size.1 {
-            line.push(Span::raw(arr[i as usize][j as usize].to_string()));
+            let mut ch = Span::raw(arr[i as usize][j as usize].to_string());
+            ch.style = Style::default()
+                // .fg(tui::style::Color::Red)
+                .add_modifier(Modifier::BOLD);
+            line.push(ch);
             if j != size.1-1 {
                 line.push(vl.clone());
             }
