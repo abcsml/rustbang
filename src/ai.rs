@@ -5,6 +5,9 @@ use crate::base::{Player, Board, GameState, Step};
 
 pub trait AI<S> :Board<S> {
     fn score(&self, player: Player) -> i16;
+
+    /// 生成要搜索的步子
+    fn get_possible_steps(&self, player: Player, deep: u8) -> Vec<S>;
 }
 
 /// player指对谁来评分
@@ -20,7 +23,12 @@ pub fn get_score<B: AI<S>,S: Step>(board: &B, step: S, me: Player,
 
     let mut max_score = i16::MIN;
     let mut min_score = i16::MAX;
-    for s in new_board.get_possible_steps(player.rev()) {
+    let steps = new_board.get_possible_steps(player.rev(), deep-1);
+    if steps.len() == 0 {
+        return new_board.score(me);
+    }
+
+    for s in steps {
         let score = get_score(&new_board, s, me, deep-1, max_score, min_score);
         max_score = max(max_score, score);
         min_score = min(min_score, score);
@@ -43,8 +51,8 @@ pub fn get_score<B: AI<S>,S: Step>(board: &B, step: S, me: Player,
 pub fn get_next_best_step<B: AI<S>,S: Step>(board: &B, player: Player) -> Option<S> {
     let mut best = None;
     let mut score = i16::MIN;
-    for s in board.get_possible_steps(player) {
-        let ns = get_score(board, s, player, 30, i16::MIN, i16::MAX);
+    for s in board.get_possible_steps(player, 10) {
+        let ns = get_score(board, s, player, 8, i16::MIN, i16::MAX);
         // println!("step: {:?}: {}", s, ns);
         if score < ns {
             score = ns;

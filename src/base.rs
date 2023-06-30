@@ -84,8 +84,8 @@ pub trait Board<S>: Clone {
     /// 判断当前是否意味着结束
     fn over(&self) -> GameState;
 
-    /// 返回下一局可能走法
-    fn get_possible_steps(&self, player: Player) -> Vec<S>;
+    // 移入ai中
+    // fn get_possible_steps(&self, player: Player) -> Vec<S>;
 
     /// 复制并执行
     fn copy_put(&self, step: S) -> Option<Self> where Self: Sized {
