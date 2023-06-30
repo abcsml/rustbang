@@ -37,44 +37,47 @@ impl Dir {
 /// Condition
 struct Cond {
     // dir: Dir,
-    player: Player,
+    piece: GoPiece,
     num: u8,        // 有几个棋子（要么是对方，要么是己方）
     block: bool,    // 端点是否被挡
 }
 
-fn get_cond_by_dir(piece: &[[GoPiece; 15]; 15], pos: &GoPos, dir: &Dir) -> Cond {
-    let mut player = Player(0);
+fn get_cond_by_dir(pieces: &[[GoPiece; 15]; 15], step: &GoStep, dir: &Dir) -> Cond {
+    let mut pie = GoPiece::None;
     let mut num = 0;
     let mut block = false;
 
-    let mut new_pos = pos.clone();
+    let mut new_pos = step.pos.clone();
     if !new_pos.dir_add(dir) {
-        return Cond {player: Player(0), num: 0, block: true};
+        return Cond {piece: pie, num , block: true};
     }
 
-    if let GoPiece::P(p) = piece[new_pos.0 as usize][new_pos.1 as usize] {
-        player = p;
-        num += 1;
-        for _ in 0..4 {
-            if !new_pos.dir_add(dir) {  // 触碰边界
-                block = true;
-                break;
-            }
-            if let GoPiece::None = piece[new_pos.0 as usize][new_pos.1 as usize] {
-                break;
-            }
-            if let GoPiece::P(x) = piece[new_pos.0 as usize][new_pos.1 as usize] {
-                if x == player {
-                    num += 1;
-                } else {
+    pie = pieces[new_pos.0 as usize][new_pos.1 as usize];
+    num += 1;
+    for _ in 0..4 {
+        if !new_pos.dir_add(dir) {  // 触碰边界
+            block = true;
+            break;
+        }
+
+        let new_piece = pieces[new_pos.0 as usize][new_pos.1 as usize];
+        if pie == new_piece {
+            num += 1;
+        } else {
+            if pie == GoPiece::None {
+                if let GoPiece::P(x) = new_piece {
+                    block = x != step.who;
+                }
+            } else {
+                if new_piece != GoPiece::None {
                     block = true;
-                    break;
                 }
             }
+            break;
         }
     }
     // log(format!("Cond: player:{}, num: {}, block: {}", player.0, num, block));
-    Cond {player, num, block}
+    Cond {piece: pie, num, block}
 }
 
 impl GoBoard {
@@ -99,19 +102,19 @@ impl GoBoard {
 
         // 四个维度
         for i in 0..4 {
-            let fcond = get_cond_by_dir(&self.pieces, &step.pos, &Dir::DIRS[i*2]);
-            let bcond = get_cond_by_dir(&self.pieces, &step.pos, &Dir::DIRS[i*2+1]);
+            let fcond = get_cond_by_dir(&self.pieces, step, &Dir::DIRS[i*2]);
+            let bcond = get_cond_by_dir(&self.pieces, step, &Dir::DIRS[i*2+1]);
 
             // 两边都有棋子
-            if fcond.num > 0 && bcond.num > 0 {
+            if fcond.piece != GoPiece::None && bcond.piece != GoPiece::None {
                 // 两边都是自己的棋
-                if step.who == fcond.player && step.who == bcond.player {
+                if GoPiece::P(step.who) == fcond.piece && GoPiece::P(step.who) == bcond.piece {
                     score[me_idx].remove(fcond.num, fcond.block);
                     score[me_idx].remove(bcond.num, bcond.block);
                     score[me_idx].insert(fcond.num + 1 + bcond.num, fcond.block || bcond.block);
                 // 一边是自己的棋
-                } else if step.who == fcond.player || step.who == bcond.player {
-                    let c = if step.who == fcond.player {&fcond} else {&bcond};
+                } else if GoPiece::P(step.who) == fcond.piece || GoPiece::P(step.who) == bcond.piece {
+                    let c = if GoPiece::P(step.who) == fcond.piece {&fcond} else {&bcond};
 
                     score[me_idx].remove(c.num, c.block);
                     if !c.block {
@@ -128,20 +131,26 @@ impl GoBoard {
                 }
 
             // 都没有棋子
-            } else if fcond.num == 0 && bcond.num == 0 {
+            } else if fcond.piece == GoPiece::None && bcond.piece == GoPiece::None {
                 score[me_idx].insert(1, false);
             
             // 只有一边有棋子
             } else {
-                for c in [&fcond, &bcond] {
-                    if c.num > 0 && c.player == step.who {
-                        score[me_idx].remove(c.num, c.block);
+                let (c, n) = if fcond.piece == GoPiece::None {
+                    (&bcond, &fcond)
+                } else {
+                    (&fcond, &bcond)
+                };
+
+                if c.piece == GoPiece::P(step.who) {
+                    score[me_idx].remove(c.num, c.block);
+                    if c.num + n.num + 1 >= 5 {
                         score[me_idx].insert(c.num + 1, c.block);
-                    } else if c.num > 0 && c.player != step.who {
-                        score[ot_idx].remove(c.num, c.block);
-                        if !c.block {
-                            score[ot_idx].insert(c.num, true);
-                        }
+                    }
+                } else if c.piece == GoPiece::P(step.who.rev()) {
+                    score[ot_idx].remove(c.num, c.block);
+                    if !c.block {
+                        score[ot_idx].insert(c.num, true);
                     }
                 }
             }
@@ -189,14 +198,14 @@ impl GoBoard {
         let mut score_sum = 0;
         // 四个维度
         for i in 0..4 {
-            let fcond = get_cond_by_dir(&self.pieces, &step.pos, &Dir::DIRS[i*2]);
-            let bcond = get_cond_by_dir(&self.pieces, &step.pos, &Dir::DIRS[i*2+1]);
+            let fcond = get_cond_by_dir(&self.pieces, step, &Dir::DIRS[i*2]);
+            let bcond = get_cond_by_dir(&self.pieces, step, &Dir::DIRS[i*2+1]);
 
             // 两边都有棋子
-            if fcond.num > 0 && bcond.num > 0 {
+            if fcond.piece != GoPiece::None && bcond.piece != GoPiece::None {
                 // 两边都是自己的棋
-                if step.who == fcond.player && step.who == bcond.player {
-                    if fcond.num + 1 + bcond.num == 5 {
+                if GoPiece::P(step.who) == fcond.piece && GoPiece::P(step.who) == bcond.piece {
+                    if fcond.num + 1 + bcond.num >= 5 {
                         return GoScores::FIVE;
                     }
                     // 没有全部阻塞
@@ -205,20 +214,24 @@ impl GoBoard {
                             .get(fcond.num+1+bcond.num, fcond.block || bcond.block);
                     }
                 // 一边是自己的棋
-                } else if step.who == fcond.player || step.who == bcond.player {
-                    let c = if step.who == fcond.player {&fcond} else {&bcond};
+                } else if GoPiece::P(step.who) == fcond.piece || GoPiece::P(step.who) == bcond.piece {
+                    let c = if GoPiece::P(step.who) == fcond.piece {&fcond} else {&bcond};
 
                     if !c.block {
                         score_sum += scores[me_idx].get(c.num + 1, true);
                     }
                 }
             
-            // 只有一边有棋子
+            // 一边有棋子或没棋子
             } else {
-                for c in [&fcond, &bcond] {
-                    if c.num > 0 && c.player == step.who {
-                        score_sum += scores[me_idx].get(c.num + 1, c.block);
-                    }
+                let (c, n) = if fcond.piece == GoPiece::None {
+                    (&bcond, &fcond)
+                } else {
+                    (&fcond, &bcond)
+                };
+
+                if c.piece == GoPiece::P(step.who) && c.num + n.num + 1 >= 5 {
+                    score_sum += scores[me_idx].get(c.num + 1, c.block);
                 }
             }
         }
@@ -277,9 +290,9 @@ impl GoScores {
         let bi = flag as usize - 2;
         let nbi = flag as usize - 1;
         if block {
-            Self::BLOCK[bi] * self.block[bi] as i16
+            Self::BLOCK[bi]
         } else {
-            Self::NON_BLOCK[nbi] * self.non_block[nbi] as i16
+            Self::NON_BLOCK[nbi]
         }
     }
 

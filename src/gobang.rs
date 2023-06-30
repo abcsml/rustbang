@@ -28,7 +28,9 @@ struct GoScores {
 impl GoScores {
     const FIVE: i16 = 5000;
 
-    const NON_BLOCK: [i16; 4] = [0, 32, 256, 512];
+    /// one, two, three, four
+    const NON_BLOCK: [i16; 4] = [0, 32, 256, 1024];
+    /// block_two, block_three, block_four
     const BLOCK: [i16; 3]     = [2, 32, 256];
 }
 
@@ -95,30 +97,6 @@ impl Board<GoStep> for GoBoard {
             GameState::Running
         }
     }
-
-    fn get_possible_steps(&self, player: Player) -> Vec<GoStep> {
-        let mut v: Vec<(i16, GoStep)> = vec![];
-        for i in 0..15 {
-            for j in 0..15 {
-                for p in [Player(0), Player(1)] {
-                    let step = GoStep::new(i, j, p);
-                    if self.get_piece(&step.pos) == GoPiece::None {
-                        if self.has_neighbor(&step) {
-                            let s = self.part_score(&step);
-                            v.push((s, GoStep::new(i, j, player)));
-                        } else {
-                            let s = -((i as i16 - 7).abs() + (j as i16 - 7).abs());
-                            v.push((s, GoStep::new(i, j, player)));
-                        }
-                    }
-                }
-            }
-        }
-
-        // v.sort_by_key(|i|i.0);
-        v.sort_by(|a,b|b.0.cmp(&a.0));
-        v.iter().filter(|i|i.0>-2).map(|i|i.1).collect()
-    }
 }
 
 impl AI<GoStep> for GoBoard {
@@ -132,6 +110,49 @@ impl AI<GoStep> for GoBoard {
         } else {
             p1_score - p0_score
         }
+    }
+
+    fn get_possible_steps(&self, player: Player, deep: u8) -> Vec<GoStep> {
+        let mut v: Vec<(i16, GoStep)> = vec![];
+        for i in 0..15 {
+            for j in 0..15 {
+                let step0 = GoStep::new(i, j, Player(0));
+                let step1 = GoStep::new(i, j, Player(1));
+                if self.get_piece(&step0.pos) == GoPiece::None {
+                    if self.has_neighbor(&step0) || self.has_neighbor(&step1) {
+                        let s0 = self.part_score(&step0);
+                        let s1 = self.part_score(&step1);
+                        v.push((s0+s1, GoStep::new(i, j, player)));
+                    } else {
+                        let s = -((i as i16 - 7).abs() + (j as i16 - 7).abs());
+                        v.push((s, GoStep::new(i, j, player)));
+                    }
+                }
+            }
+        }
+
+        // v.sort_by_key(|i|i.0);
+        v.sort_by(|a,b|b.0.cmp(&a.0));
+        // let b: Vec<GoStep> = v.iter().filter(|i|i.0>500).map(|i|i.1).collect();
+        // 到最后两级时，只搜索高分的
+        if deep < 5 {
+            return v.iter().filter(|x|x.0>250&&x.0<512).map(|x|x.1).collect();
+        }
+        // 最后四级
+        // if deep < 5 {
+        //     return v.iter().filter(|x|x.0>500).map(|x|x.1).collect();
+        // }
+        // 最后六级
+        // if deep < 7 {
+        //     return v.iter().filter(|x|x.0>250).map(|x|x.1).collect();
+        // }
+        // 分级过滤
+        for i in [1000, 512, 256, 0] {
+            if v[0].0 > i {
+                return v.iter().filter(|x|x.0>i).map(|x|x.1).collect();
+            }
+        }
+        v.iter().filter(|x|x.0>-2).map(|x|x.1).collect()
     }
 }
 
@@ -156,6 +177,13 @@ impl Display for GoBoard {
     }
 
     fn to_string(&self) -> String {
-        format!("{:?}\n", &self.scores)
+        format!("0:{}{:?}{:?} x:{}{:?}{:?}",
+            self.scores[0].five,
+            self.scores[0].non_block,
+            self.scores[0].block,
+            self.scores[1].five,
+            self.scores[1].non_block,
+            self.scores[1].block,
+        )
     }
 }
