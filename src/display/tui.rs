@@ -7,13 +7,15 @@ use crate::{base::{Game, Step, Board, Player, self, Role}, ai::{self, AI}};
 
 use super::{util, Display, log};
 
-static mut TEXT: VecDeque<Spans> = VecDeque::new();
+static mut TEXT: Vec<Spans> = Vec::new();
 
 pub unsafe fn tui_log(spans: Spans<'static>) {
     if TEXT.len() > 20 {
-        TEXT.pop_front();
+        // TEXT.pop_front();
+        TEXT.remove(TEXT.len()-1);
     }
-    TEXT.push_back(spans);
+    TEXT.push(spans);
+    // TEXT.push_back(spans);
 }
 
 pub enum TuiEvent {
