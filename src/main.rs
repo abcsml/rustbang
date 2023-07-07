@@ -2,21 +2,23 @@ mod base;
 mod display;
 mod ai;
 
-mod gobang;
 mod tic_tac_toe;
+mod gobang;
+mod goT;
 
+use base::*;
 use display::log;
-use gobang::{GoBoard, GoStep};
 
-use crate::base::{Game, Player, Board, Step, Role};
-use crate::tic_tac_toe::{TTTBoard, TTTStep};
+use tic_tac_toe::{TTTBoard, TTTStep};
+use gobang::{GoBoard, GoStep};
+use goT::{GoTBoard, GoTStep};
 
 fn main() {
     // let mut game = Game::new(TTTBoard::new(), [Role::Hum, Role::Com], TTTStep::new(3,3));
     let mut game = Game::new(
-        GoBoard::new(),
-        [Role::Hum, Role::Com],
-        GoStep::new(3,3,Player(0))
+        GoTBoard::new(),
+        [Role::Hum, Role::Hum],
+        GoTStep::new(5,5,Player(0))
     );
 
     game.tui_main();
