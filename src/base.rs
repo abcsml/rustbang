@@ -29,23 +29,35 @@ pub enum GameState {
     Over(OutCome),
 }
 
+#[derive(PartialEq)]
+pub enum GameType {
+    /// 只会落子，在棋盘上的棋子只会增加，不会消失
+    /// 例：五子棋（gobang）
+    Put,
+    /// 棋子移动，会吃掉对方棋子，只会减少，不会增加
+    /// 例：中国象棋
+    Move,
+}
+
 pub struct Game<B: Board<S>, S: Step> {
     pub state: GameState,
     pub board: B,
     pub players: [Role; 2],
     pub curr_player: Player,    // 此时还未放棋子，用下标表示
     pub hist_steps: Vec<S>,
+    pub game_type: GameType,
 }
 
 impl<B: Board<S>,S: Step> Game<B,S> {
     /// 创建一局新游戏
-    pub fn new(board: B, players: [Role; 2], step: S) -> Self {
+    pub fn new(board: B, players: [Role; 2], game_type: GameType) -> Self {
         Game {
             state: GameState::Running,
             board,
             players,
             curr_player: Player(0),
-            hist_steps: vec![step; 0],
+            hist_steps: vec![],
+            game_type,
         }
     }
 
@@ -99,14 +111,10 @@ pub trait Board<S>: Clone {
 }
 
 pub trait Step: Copy {
-    /// 根据坐标和玩家创建一个Step，定义棋盘左上角为(0,0)
-    fn new(x: u8, y: u8, p: Player) -> Self;
-
     /// 这步棋属于谁
     fn who(&self) -> Player;
-}
 
-// pub trait Map {
-//     type Output;
-//     fn to_array(&self) -> Self::Output;
-// }
+    fn new_put_step(pos: (u8, u8), p: Player) -> Self;
+
+    fn new_move_step(from: (u8, u8), to: (u8, u8), p: Player) -> Self;
+}

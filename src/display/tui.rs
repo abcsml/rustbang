@@ -3,7 +3,7 @@ use std::{io::{self, Stdout}, time::Duration, collections::VecDeque};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen}, execute, event::{EnableMouseCapture, poll, Event, MouseEventKind, read, MouseButton, DisableMouseCapture}};
 use tui::{Terminal, backend::CrosstermBackend, widgets::{Paragraph, Block, Borders, Wrap}, style::{Color, Style}, layout::{Alignment, Layout, Direction, Constraint}, text::{Spans, Span}};
 
-use crate::{base::{Game, Step, Board, Player, self, Role}, ai::{self, AI}};
+use crate::{base::{Game, Step, Board, Player, self, Role, GameType}, ai::{self, AI}};
 
 use super::{util, Display, log};
 
@@ -96,41 +96,46 @@ pub fn tui_exit(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(),
     Ok(())
 }
 
-impl<B: Board<S>, S: Step + std::fmt::Debug> Game<B, S> {
-    pub fn tui_main(&mut self) where B: Display + AI<S> {
-        let mut tem = tui_init().unwrap();
-        loop {
-            // if let base::GameState::Over(_o) = game.state {
-                // match o {
-                //     base::OutCome::Draw
-                // }
-            // }
-            tui_draw(&mut tem, vec![&self.board]);
+pub fn tui_main<B, S>(game: &mut Game<B, S>) where
+    B: Board<S> + Display + AI<S>,
+    S: Step + std::fmt::Debug
+{
+    let mut tem = tui_init().unwrap();
+    let mut last_click_pos = None;
+    loop {
+        tui_draw(&mut tem, vec![&game.board]);
 
-            match self.players[self.curr_player.0 as usize] {
-                Role::Com => {
-                    let a = self.step(ai::get_next_best_step(&self.board, self.curr_player).unwrap());
-                    if a {
-                        log(self.board.to_string());
-                    }
-                }
-                Role::Hum => {
-                    let event = tui_get_event();
-                    if let TuiEvent::Exit = event {
-                        break;
-                    }
+        if game.players[game.curr_player.0 as usize] == Role::Com {
+            game.step(ai::get_next_best_step(&game.board, game.curr_player).unwrap())
+            .then(||{
+                log(game.board.to_string());
+            });
+        } else {
+            let event = tui_get_event();
+            if let TuiEvent::Exit = event {
+                break;
+            }
 
-                    if let TuiEvent::GetPos((x, y)) = event {
-                        let step = S::new(x as u8, y as u8, self.curr_player);
-                        if self.state == base::GameState::Running {
-                            let _ = self.step(step);
-                            log(self.board.to_string());
+            if let TuiEvent::GetPos((x, y)) = event {
+                if game.game_type == GameType::Put {
+                    let step = S::new_put_step((x as u8, y as u8), game.curr_player);
+                    if game.state == base::GameState::Running {
+                        game.step(step);
+                        log(game.board.to_string());
+                    }
+                } else {
+                    last_click_pos = match last_click_pos {
+                        None => Some((x as u8, y as u8)),
+                        Some((fx, fy)) => {
+                            if game.state == base::GameState::Running {
+                                game.step(S::new_move_step((fx, fy), (x as u8, y as u8), game.curr_player));
+                            }
+                            None
                         }
                     }
                 }
             }
         }
-
-        let _ = tui_exit(&mut tem);
     }
+    let _ = tui_exit(&mut tem);
 }

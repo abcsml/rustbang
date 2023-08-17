@@ -27,14 +27,24 @@ pub struct GoTBoard {
 }
 
 impl Step for GoTStep {
-    fn new(x: u8, y: u8, p: Player) -> Self {
-        GoTStep { who: p, from: GoTPos(x, y), to: GoTPos(x, y) }
-    }
-
     fn who(&self) -> Player {
         self.who
     }
+
+    fn new_put_step(pos: (u8, u8), p: Player) -> Self {
+        todo!()
+    }
+
+    fn new_move_step(from: (u8, u8), to: (u8, u8), p: Player) -> Self {
+        GoTStep { who: p, from: GoTPos(from.0, from.1), to: GoTPos(to.0, to.1) }
+    }
 }
+
+// impl MoveStep for GoTStep {
+//     fn new(fx: u8, fy: u8, tx: u8, ty: u8, p: Player) -> Self {
+//         GoTStep { who: p, from: GoTPos(fx, fy), to: GoTPos(tx, ty) }
+//     }
+// }
 
 impl Board<GoTStep> for GoTBoard {
     fn new() -> Self {
@@ -97,7 +107,7 @@ impl Display for GoTBoard {
     }
 
     fn to_string(&self) -> String {
-        todo!()
+        format!("\n{:?}\n", self.pieces)
     }
 }
 

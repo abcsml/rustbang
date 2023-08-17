@@ -29,12 +29,20 @@ pub struct TTTStep {
 }
 
 impl Step for TTTStep {
-    fn new(x: u8, y: u8, p: Player) -> Self {
-        TTTStep { piece: TTTPiece { belong: p, pos: TTTPos(x, y) } }
-    }
+    // fn new(x: u8, y: u8, p: Player) -> Self {
+    //     TTTStep { piece: TTTPiece { belong: p, pos: TTTPos(x, y) } }
+    // }
 
     fn who(&self) -> Player {
         self.piece.belong
+    }
+
+    fn new_put_step(pos: (u8, u8), p: Player) -> Self {
+        TTTStep { piece: TTTPiece { belong: p, pos: TTTPos(pos.0, pos.1) } }
+    }
+
+    fn new_move_step(from: (u8, u8), to: (u8, u8), p: Player) -> Self {
+        panic!("TTT dont");
     }
 }
 
@@ -172,6 +180,6 @@ impl Display for TTTBoard {
     }
 
     fn to_string(&self) -> String {
-        todo!()
+        String::new()
     }
 }

@@ -52,12 +52,22 @@ pub struct GoBoard {
 }
 
 impl Step for GoStep {
-    fn new(x: u8, y: u8, p: Player) -> Self {
-        GoStep { who: p, pos: GoPos(x, y) }
-    }
-
     fn who(&self) -> Player {
         self.who
+    }
+
+    fn new_put_step(pos: (u8, u8), p: Player) -> Self {
+        GoStep { who: p, pos: GoPos(pos.0, pos.1) }
+    }
+
+    fn new_move_step(from: (u8, u8), to: (u8, u8), p: Player) -> Self {
+        panic!("Go: no move");
+    }
+}
+
+impl GoStep {
+    fn new(x: u8, y: u8, p: Player) -> Self {
+        GoStep { who: p, pos: GoPos(x, y) }
     }
 }
 
