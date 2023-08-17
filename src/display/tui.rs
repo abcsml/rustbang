@@ -102,38 +102,51 @@ pub fn tui_main<B, S>(game: &mut Game<B, S>) where
 {
     let mut tem = tui_init().unwrap();
     let mut last_click_pos = None;
+    let mut over_flag = false;
     loop {
         tui_draw(&mut tem, vec![&game.board]);
 
-        if game.players[game.curr_player.0 as usize] == Role::Com {
-            game.step(ai::get_next_best_step(&game.board, game.curr_player).unwrap())
-            .then(||{
-                log(game.board.to_string());
-            });
-        } else {
-            let event = tui_get_event();
-            if let TuiEvent::Exit = event {
-                break;
-            }
+        let event = tui_get_event();
+        if let TuiEvent::Exit = event {
+            break;
+        }
 
-            if let TuiEvent::GetPos((x, y)) = event {
-                if game.game_type == GameType::Put {
-                    let step = S::new_put_step((x as u8, y as u8), game.curr_player);
-                    if game.state == base::GameState::Running {
-                        game.step(step);
-                        log(game.board.to_string());
-                    }
-                } else {
-                    last_click_pos = match last_click_pos {
-                        None => Some((x as u8, y as u8)),
-                        Some((fx, fy)) => {
-                            if game.state == base::GameState::Running {
-                                game.step(S::new_move_step((fx, fy), (x as u8, y as u8), game.curr_player));
+        if !over_flag {
+            if game.players[game.curr_player.0 as usize] == Role::Com {
+                game.step(ai::get_next_best_step(&game.board, game.curr_player).unwrap())
+                .then(||{
+                    log(game.board.to_string());
+                });
+            } else {
+                if let TuiEvent::GetPos((x, y)) = event {
+                    if game.game_type == GameType::Put {
+                        let step = S::new_put_step((x as u8, y as u8), game.curr_player);
+                        if game.state == base::GameState::Running {
+                            game.step(step);
+                            log(game.board.to_string());
+                        }
+                    } else {
+                        last_click_pos = match last_click_pos {
+                            None => Some((x as u8, y as u8)),
+                            Some((fx, fy)) => {
+                                if game.state == base::GameState::Running {
+                                    game.step(S::new_move_step((fx, fy), (x as u8, y as u8), game.curr_player));
+                                }
+                                None
                             }
-                            None
                         }
                     }
                 }
+            }
+
+            // over
+            if let base::GameState::Over(x) = &game.state {
+                log("----游戏结束----".to_string());
+                match x {
+                    base::OutCome::Draw => log("平局".to_string()),
+                    base::OutCome::Winer(y) => log(format!("Player {} Win !!!", y.0))
+                };
+                over_flag = true;
             }
         }
     }
